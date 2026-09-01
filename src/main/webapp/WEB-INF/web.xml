@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  web.xml  -  THE SERVLET DEPLOYMENT DESCRIPTOR
+  ============================================================================
+  Before annotations existed (Java EE 5 and earlier) this file configured the
+  entire application and grew to thousands of lines. Today it is almost empty
+  because @WebServlet, @ApplicationPath and friends replaced it.
+
+  It is still the right place for things that are genuinely *deployment*
+  configuration rather than code:
+    - session timeout
+    - security constraints and login config
+    - error pages
+    - context parameters an operator might want to change per environment
+
+  Rule of thumb used in industry: annotations for code-level wiring, web.xml
+  for anything ops needs to override without a recompile. When both define the
+  same thing, web.xml wins.
+  ============================================================================
+-->
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
+                             https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
+         version="6.0">
+
+    <display-name>UNICAM Course Enrollment Service</display-name>
+
+    <!--
+      Our API is stateless (every request carries everything it needs), so
+      sessions should not be created at all. This 30-minute value only applies
+      if some other component creates one.
+    -->
+    <session-config>
+        <session-timeout>30</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
+
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+
+</web-app>

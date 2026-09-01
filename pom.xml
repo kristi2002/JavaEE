@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ============================================================================
+  THE PROJECT OBJECT MODEL (POM)
+  ============================================================================
+  This single file is the "contract" of a Maven project. It answers four
+  questions that every Java team needs answered the same way:
+
+    1. WHO am I?          -> groupId / artifactId / version  (the "GAV coordinates")
+    2. WHAT do I produce? -> <packaging>war</packaging>
+    3. WHAT do I need?    -> <dependencies>
+    4. HOW am I built?    -> <build><plugins>
+
+  Anyone who clones this repo runs `mvn verify` and gets a byte-identical
+  build. That reproducibility is the whole point of a build tool.
+  ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      GAV COORDINATES - the globally unique address of this artifact.
+      groupId    : reverse-DNS of the owning organisation. Never invent a random
+                   name here; in industry it maps to your company domain.
+      artifactId : the module name. Kebab-case is the convention.
+      version    : SNAPSHOT = "under development, may change at any time".
+                   A release version (1.0.0) is immutable once published.
+    -->
+    <groupId>it.unicam.cs.enrollment</groupId>
+    <artifactId>enrollment-service</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <!--
+      war = Web ARchive. A zip with a WEB-INF/ folder that an application
+      server (WildFly, Payara, WebLogic, TomEE...) knows how to deploy.
+      The alternatives you will meet: jar (library), ear (enterprise archive,
+      legacy), pom (aggregator module).
+    -->
+    <packaging>war</packaging>
+
+    <name>UNICAM Course Enrollment Service</name>
+    <description>
+        A Jakarta EE 10 reference application demonstrating a layered
+        enterprise architecture: JPA persistence, CDI, EJB, JAX-RS,
+        Bean Validation and JTA transactions.
+    </description>
+
+    <!--
+      PROPERTIES
+      Centralised constants. Declaring every dependency version here (instead
+      of inline) is standard practice: one place to bump versions, and tools
+      like Dependabot/Renovate can parse it.
+    -->
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+
+        <!--
+          `maven.compiler.release` (Java 9+) is strictly better than the older
+          source/target pair: it also validates that you only call APIs that
+          exist in that JDK version, so you cannot accidentally compile against
+          a newer JDK's methods and blow up at runtime.
+        -->
+        <maven.compiler.release>11</maven.compiler.release>
+
+        <!-- Jakarta EE platform -->
+        <version.jakartaee.api>10.0.0</version.jakartaee.api>
+
+        <!-- Logging facade. Provided by WildFly at runtime. -->
+        <version.slf4j>2.0.13</version.slf4j>
+
+        <!-- Test stack -->
+        <version.junit.jupiter>5.10.2</version.junit.jupiter>
+        <version.mockito>5.11.0</version.mockito>
+        <version.assertj>3.25.3</version.assertj>
+        <version.hibernate>6.4.4.Final</version.hibernate>
+        <version.hibernate.validator>8.0.1.Final</version.hibernate.validator>
+        <version.expressly>5.0.0</version.expressly>
+        <version.h2>2.2.224</version.h2>
+        <version.yasson>3.0.3</version.yasson>
+
+        <!-- Build plugins -->
+        <version.plugin.compiler>3.13.0</version.plugin.compiler>
+        <version.plugin.war>3.4.0</version.plugin.war>
+        <version.plugin.surefire>3.2.5</version.plugin.surefire>
+        <version.plugin.failsafe>3.2.5</version.plugin.failsafe>
+        <version.plugin.clean>3.3.2</version.plugin.clean>
+        <version.plugin.resources>3.3.1</version.plugin.resources>
+
+        <!--
+          Where `mvn package` drops the .war. We point it at a folder that
+          docker-compose bind-mounts into WildFly's deployment scanner, so a
+          rebuild hot-redeploys with no container restart.
+        -->
+        <deployment.directory>${project.basedir}/docker/deployments</deployment.directory>
+    </properties>
+
+    <dependencies>
+
+        <!-- ================================================================
+             THE PLATFORM API  -  scope: provided
+             ================================================================
+             This one artifact contains every Jakarta EE 10 API: JPA, CDI,
+             EJB, JAX-RS, Bean Validation, JSON-B, Servlet, JTA...
+
+             `provided` is the single most important scope to understand here.
+             It means: "compile against it, but do NOT package it into the WAR,
+             because the application server already provides the implementation
+             at runtime."
+
+             If you shipped these classes inside your WAR you would get
+             ClassCastExceptions and LinkageErrors, because the server would
+             load its copy and yours simultaneously.
+        -->
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <version>${version.jakartaee.api}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ================================================================
+             LOGGING FACADE  -  scope: provided
+             ================================================================
+             SLF4J is an *interface only*. At runtime WildFly binds it to its
+             own JBoss LogManager. This "facade" pattern is universal in the
+             JVM world: your code never depends on a concrete logging engine,
+             so ops can swap Logback/Log4j2/JUL without touching source.
+        -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${version.slf4j}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ================================================================
+             TEST DEPENDENCIES  -  scope: test
+             ================================================================
+             `test` scope is on the test classpath only; never shipped.
+        -->
+
+        <!-- JUnit 5 ("Jupiter") - the test engine and assertions. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${version.junit.jupiter}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Mockito - creates fake collaborators so a unit test exercises
+             exactly one class and nothing else. -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${version.mockito}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>${version.mockito}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- AssertJ - fluent assertions. `assertThat(x).isEqualTo(y)` reads
+             like English and produces far better failure messages. -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${version.assertj}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Hibernate + H2: lets repository tests run against a real (in-memory)
+             SQL database in milliseconds, with no Docker and no app server.
+             In production WildFly supplies Hibernate itself - that is why this
+             is test-scoped and not provided. -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <version>${version.hibernate}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>${version.h2}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+          Yasson - the reference implementation of Jakarta JSON Binding.
+
+          Needed for a subtle reason worth understanding. `provided` dependencies
+          ARE on the test classpath (they have to be - the code would not
+          compile otherwise). So during tests Hibernate sees the JSON-B *API*
+          from jakarta.jakartaee-api, decides it can support JSON column mapping,
+          and calls JsonbBuilder.create() - which throws, because an API with no
+          implementation behind it is useless. The startup then fails with
+          "Could not initialize class ...JakartaJsonIntegration".
+
+          At runtime this never happens: WildFly ships Yasson. Supplying it here
+          simply makes the test classpath resemble the real one. This mismatch
+          between "compiles against" and "runs against" is a classic source of
+          works-on-my-machine bugs.
+        -->
+        <dependency>
+            <groupId>org.eclipse</groupId>
+            <artifactId>yasson</artifactId>
+            <version>${version.yasson}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Hibernate Validator = the reference implementation of Bean
+             Validation. Needed to unit-test our custom constraints outside a
+             container. Expressly is the Jakarta Expression Language engine it
+             uses to interpolate {placeholders} in violation messages. -->
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>${version.hibernate.validator}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.expressly</groupId>
+            <artifactId>expressly</artifactId>
+            <version>${version.expressly}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- SLF4J needs a binding on the test classpath or it logs nothing.
+             `simple` prints to stdout, which is all a test run needs. -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${version.slf4j}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <!--
+          finalName controls the artifact filename. Because WildFly derives the
+          web context root from it, `enrollment.war` is served at
+          http://localhost:8080/enrollment
+        -->
+        <finalName>enrollment</finalName>
+
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.plugin.compiler}</version>
+                <configuration>
+                    <compilerArgs>
+                        <!-- Keeps method parameter names in the bytecode.
+                             Frameworks (JAX-RS, JPA, JSON-B) can then report
+                             real names instead of arg0/arg1. -->
+                        <arg>-parameters</arg>
+                        <!-- Turn on all warnings; a clean build is a habit
+                             worth forming early. -->
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>${version.plugin.war}</version>
+                <configuration>
+                    <!-- Jakarta EE annotations replaced most of web.xml, so a
+                         missing one is not an error. -->
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                    <!-- Drop the WAR straight into the folder Docker watches. -->
+                    <outputDirectory>${deployment.directory}</outputDirectory>
+                </configuration>
+            </plugin>
+
+            <!-- Writes the .dodeploy marker next to the WAR, which is what
+                 actually triggers WildFly to deploy it.
+
+                 The scanner is configured (docker/wildfly/configure.cli, §5)
+                 to be marker-driven rather than timestamp-driven, because the
+                 timestamp comparison is unreliable across a Docker bind mount
+                 on Windows and macOS and puts the server into an endless
+                 redeploy loop. This execution is what keeps `mvn package` a
+                 single command in spite of that.
+
+                 It is bound to `package` and declared AFTER the war plugin, so
+                 the marker is never written before the archive it refers to -
+                 asking WildFly to deploy a half-written WAR fails in confusing
+                 ways. Ordering within a phase follows declaration order here. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>${version.plugin.resources}</version>
+                <executions>
+                    <execution>
+                        <id>write-dodeploy-marker</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${deployment.directory}</outputDirectory>
+                            <overwrite>true</overwrite>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/wildfly</directory>
+                                    <includes>
+                                        <include>enrollment.war.dodeploy</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Surefire runs *unit* tests (fast, isolated) during `mvn test`.
+                 Convention: classes named *Test. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${version.plugin.surefire}</version>
+            </plugin>
+
+            <!-- Failsafe runs *integration* tests during `mvn verify`, after
+                 packaging. Convention: classes named *IT. Splitting the two is
+                 standard: developers run `mvn test` all day, CI runs
+                 `mvn verify`. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${version.plugin.failsafe}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- `mvn clean` must also wipe the deployment folder, otherwise a
+                 stale WAR keeps being served. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
+                <version>${version.plugin.clean}</version>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${deployment.directory}</directory>
+                            <includes>
+                                <include>*.war</include>
+                                <include>*.deployed</include>
+                                <include>*.failed</include>
+                                <include>*.undeployed</include>
+                                <include>*.isdeploying</include>
+                                <include>*.pending</include>
+                            </includes>
+                        </fileset>
+                    </filesets>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>

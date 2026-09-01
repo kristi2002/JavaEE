@@ -1,0 +1,17 @@
+# ---------------------------------------------------------------------------
+# Line endings.
+#
+# This machine has core.autocrlf enabled, which rewrites text files to CRLF on
+# checkout. That is harmless for Java sources, and fatal for two things here:
+#
+#   scripts/api-tour.sh          run by bash - CRLF makes the shebang invalid
+#   docker/wildfly/configure.cli read by jboss-cli inside a Linux container
+#
+# Normalising the whole tree to LF avoids having to remember which files are
+# which, and matches what the Docker images expect.
+# ---------------------------------------------------------------------------
+* text=auto eol=lf
+
+*.war binary
+*.jar binary
+*.png binary

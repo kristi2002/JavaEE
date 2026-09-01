@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNICAM Course Enrollment Service</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #1a1a1a;
+            --muted: #5b6470;
+            --line: #e2e6ea;
+            --accent: #7c3aed;
+            --code-bg: #f5f6f8;
+            --get: #16a34a;
+            --post: #2563eb;
+            --patch: #d97706;
+            --delete: #dc2626;
+            --put: #0891b2;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #14161a;
+                --fg: #e8eaed;
+                --muted: #9aa4b2;
+                --line: #2a2f38;
+                --code-bg: #1c1f26;
+            }
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 2.5rem 1.25rem 4rem;
+            background: var(--bg);
+            color: var(--fg);
+            font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        main { max-width: 860px; margin: 0 auto; }
+        h1 { font-size: 1.75rem; margin: 0 0 .35rem; letter-spacing: -0.02em; }
+        .sub { color: var(--muted); margin: 0 0 2.5rem; }
+        h2 {
+            font-size: .8rem; text-transform: uppercase; letter-spacing: .09em;
+            color: var(--muted); margin: 2.5rem 0 .9rem; font-weight: 600;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+        td { padding: .55rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+        tr:last-child td { border-bottom: none; }
+        .m { font-weight: 700; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+             font-size: .78rem; white-space: nowrap; width: 1%; }
+        .GET { color: var(--get); } .POST { color: var(--post); }
+        .PATCH { color: var(--patch); } .DELETE { color: var(--delete); } .PUT { color: var(--put); }
+        code, .p {
+            font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+            font-size: .84rem;
+        }
+        .p { color: var(--fg); }
+        .d { color: var(--muted); font-size: .85rem; }
+        pre {
+            background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px;
+            padding: .9rem 1rem; overflow-x: auto; font-size: .82rem; line-height: 1.55;
+        }
+        a { color: var(--accent); }
+        .note {
+            border-left: 3px solid var(--accent); padding: .1rem 0 .1rem 1rem;
+            color: var(--muted); font-size: .9rem; margin: 1.25rem 0;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>UNICAM Course Enrollment Service</h1>
+    <p class="sub">Jakarta EE 10 &middot; JPA &middot; CDI &middot; JAX-RS &middot; Bean Validation &middot; JTA</p>
+
+    <p class="note">
+        This is a study project. Every class is commented to explain what it does,
+        why it is built that way, and what the industry term for it is.
+        Start with <code>README.md</code>, then <code>docs/ARCHITECTURE.md</code>.
+    </p>
+
+    <h2>Courses</h2>
+    <table>
+        <tr><td class="m GET">GET</td><td class="p">/api/courses/open</td><td class="d">Courses whose enrollment window is open right now</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/courses?year=2025&amp;semester=FALL</td><td class="d">Catalogue, paginated</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/courses/{id}</td><td class="d">One course, with prerequisites</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/courses/{id}/enrollments</td><td class="d">Course roster</td></tr>
+        <tr><td class="m POST">POST</td><td class="p">/api/courses</td><td class="d">Create a course</td></tr>
+        <tr><td class="m PUT">PUT</td><td class="p">/api/courses/{id}/prerequisites/{prereqId}</td><td class="d">Add a prerequisite</td></tr>
+        <tr><td class="m PATCH">PATCH</td><td class="p">/api/courses/{id}/capacity?value=50</td><td class="d">Change capacity</td></tr>
+    </table>
+
+    <h2>Students</h2>
+    <table>
+        <tr><td class="m GET">GET</td><td class="p">/api/students?name=ferrari&amp;status=ACTIVE</td><td class="d">Search, paginated</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/students/{id}</td><td class="d">Detail, with full transcript</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/students/by-number/{matricola}</td><td class="d">Lookup by matricola</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/students/{id}/enrollments</td><td class="d">The student's enrollments</td></tr>
+        <tr><td class="m POST">POST</td><td class="p">/api/students</td><td class="d">Register a student</td></tr>
+        <tr><td class="m PATCH">PATCH</td><td class="p">/api/students/{id}</td><td class="d">Partial update</td></tr>
+        <tr><td class="m POST">POST</td><td class="p">/api/students/{id}/suspension</td><td class="d">Suspend</td></tr>
+        <tr><td class="m DELETE">DEL</td><td class="p">/api/students/{id}/suspension</td><td class="d">Reinstate</td></tr>
+        <tr><td class="m DELETE">DEL</td><td class="p">/api/students/{id}</td><td class="d">Delete (cascades to enrollments)</td></tr>
+    </table>
+
+    <h2>Enrollments</h2>
+    <table>
+        <tr><td class="m POST">POST</td><td class="p">/api/enrollments</td><td class="d">Enrol &mdash; enforces every business rule</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/enrollments/{id}</td><td class="d">One enrollment</td></tr>
+        <tr><td class="m POST">POST</td><td class="p">/api/enrollments/{id}/grade</td><td class="d">Record a pass (18&ndash;30, optional lode)</td></tr>
+        <tr><td class="m POST">POST</td><td class="p">/api/enrollments/{id}/failure</td><td class="d">Record a failure</td></tr>
+        <tr><td class="m POST">POST</td><td class="p">/api/enrollments/{id}/retake</td><td class="d">Re-activate after a failure</td></tr>
+        <tr><td class="m DELETE">DEL</td><td class="p">/api/enrollments/{id}</td><td class="d">Withdraw (status change, not a delete)</td></tr>
+    </table>
+
+    <h2>Professors</h2>
+    <table>
+        <tr><td class="m GET">GET</td><td class="p">/api/professors</td><td class="d">All teaching staff</td></tr>
+        <tr><td class="m GET">GET</td><td class="p">/api/professors/{id}</td><td class="d">One professor</td></tr>
+    </table>
+
+    <h2>Try it</h2>
+    <pre>curl http://localhost:8280/enrollment/api/courses/open
+
+curl -X POST http://localhost:8280/enrollment/api/enrollments \
+     -H "Content-Type: application/json" \
+     -d '{"studentId": 1, "courseId": 1}'</pre>
+
+    <h2>Business rules you can trigger</h2>
+    <table>
+        <tr><td class="p">COURSE_FULL</td><td class="d">CS401 has a capacity of 3 &mdash; enrol four students</td></tr>
+        <tr><td class="p">ENROLLMENT_WINDOW_CLOSED</td><td class="d">CS150's window closed last year</td></tr>
+        <tr><td class="p">PREREQUISITES_NOT_MET</td><td class="d">CS401 requires CS101 and CS301</td></tr>
+        <tr><td class="p">STUDENT_NOT_ELIGIBLE</td><td class="d">Student 100004 is suspended</td></tr>
+        <tr><td class="p">DUPLICATE_RESOURCE</td><td class="d">Enrol the same student twice</td></tr>
+        <tr><td class="p">INVALID_GRADE</td><td class="d">Award <em>lode</em> with a grade below 30</td></tr>
+    </table>
+</main>
+</body>
+</html>

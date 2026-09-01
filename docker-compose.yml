@@ -1,0 +1,123 @@
+# =============================================================================
+# The local development stack: PostgreSQL + WildFly
+# =============================================================================
+#   docker compose up -d --build     start everything
+#   docker compose logs -f wildfly   watch the application log
+#   docker compose down              stop (keeps the database volume)
+#   docker compose down -v           stop and DELETE the database
+#
+# NOTE ON PORTS: this machine already runs other projects on 8080, 5432 and
+# 55432, so the HOST ports here are 8280 (application) and 55433 (database).
+# The application is at http://localhost:8280/enrollment
+#
+# The development loop once this is running:
+#   mvn package   ->  the WAR lands in ./docker/deployments
+#                 ->  WildFly's deployment scanner notices and hot-redeploys
+#   No container restart, no manual copying.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL - the database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: enrollment-postgres
+
+    environment:
+      # These three variables are the official image's initialisation contract:
+      # on FIRST start with an empty data directory it creates this database and
+      # this user. If the volume already has data they are ignored - which is
+      # why changing the password here has no effect until you `down -v`.
+      POSTGRES_DB: enrollment
+      POSTGRES_USER: enrollment
+      POSTGRES_PASSWORD: enrollment
+      # Speeds up initdb slightly and keeps collation deterministic.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+
+    ports:
+      # host:container.
+      #
+      # The HOST side is 55433 rather than the usual 5432 because you already
+      # have other projects listening on 5432 and 55432. Only the host side
+      # matters here - inside the Docker network WildFly still reaches this
+      # container as `postgres:5432`, which is what configure.cli uses. Changing
+      # a host port never requires changing application configuration, and that
+      # separation is the whole point of container networking.
+      #
+      # Exposed at all so you can connect a GUI client (DBeaver, pgAdmin,
+      # IntelliJ's database tool) and actually LOOK at the tables Hibernate
+      # generates - the fastest way to understand a mapping.
+      - "55433:5432"
+
+    volumes:
+      # A NAMED VOLUME, managed by Docker. Without it the database lives inside
+      # the container's writable layer and every `docker compose down` silently
+      # destroys your data.
+      - postgres-data:/var/lib/postgresql/data
+
+    healthcheck:
+      # A container being "started" is not the same as the service inside it
+      # being READY. PostgreSQL takes a few seconds to initialise, and WildFly
+      # would otherwise try to fill its connection pool against a database that
+      # is not listening yet, and fail the deployment.
+      #
+      # pg_isready is Postgres's own readiness probe.
+      test: ["CMD-SHELL", "pg_isready -U enrollment -d enrollment"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # WildFly - the Jakarta EE application server
+  # ---------------------------------------------------------------------------
+  wildfly:
+    build:
+      context: ./docker/wildfly
+      dockerfile: Dockerfile
+    container_name: enrollment-wildfly
+
+    depends_on:
+      postgres:
+        # Waits for the HEALTHCHECK above to pass, not merely for the container
+        # to exist. `depends_on` without a condition only orders startup, which
+        # is almost never what you actually want.
+        condition: service_healthy
+
+    ports:
+      # Host port 8280, because 8080 on this machine is already taken by another
+      # project. The container still serves on 8080 internally.
+      - "8280:8080"   # the application:   http://localhost:8280/enrollment
+      - "9990:9990"   # the admin console: http://localhost:9990  (admin / Admin#2026)
+
+    volumes:
+      # THE HOT-DEPLOY MOUNT.
+      #
+      # WildFly's deployment scanner watches this directory. Because Maven is
+      # configured (see <outputDirectory> in pom.xml) to write the WAR straight
+      # here, `mvn package` triggers a redeploy within a second or two.
+      #
+      # The scanner also writes marker files next to the WAR - enrollment.war.deployed
+      # on success, .failed with the reason on error. Those appear on your host,
+      # which is why .gitignore excludes them. Reading the .failed file is the
+      # quickest way to diagnose a deployment that did not come up.
+      - ./docker/deployments:/opt/jboss/wildfly/standalone/deployments
+
+    environment:
+      # Heap sizing. The default is a fraction of host RAM, which in a container
+      # can be surprisingly large. Being explicit keeps the footprint predictable.
+      JAVA_OPTS: >-
+        -Xms256m
+        -Xmx768m
+        -Djava.net.preferIPv4Stack=true
+        -Djboss.as.management.blocking.timeout=600
+
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
